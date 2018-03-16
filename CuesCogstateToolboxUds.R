@@ -28,12 +28,13 @@ length(grep(pattern = "date", x = names(df)))
 # Coerce df$dob to type Date
 class(df$dob)
 # lubridate::mdy(df$dob)
-df$dob <- lubridate::mdy(df$dob)
+lubridate::mdy(df$dob)
+df$dob <- as.character(lubridate::mdy(df$dob))
 
-# Coerce any columns with "date" in field name to type Date
-df %>% 
-  select(matches("date")) # this doesn't work because there's a non-date 'remdates' column;
-                          # use ends_with("dates") instead
+# Coerce any columns with "date"=>"character" in field name to type Date
+# df %>% 
+#   select(matches("date")) # this doesn't work because there's a non-date 'remdates' column;
+#                           # use ends_with("dates") instead
 missing_dates_1 <- df %>% 
   select(ends_with("date")) %>% 
   sapply(X = ., FUN = function(x) { sum(is.na(x)) })
@@ -42,15 +43,18 @@ missing_dates_2 <- df %>%
   select(ends_with("date")) %>% 
   sapply(X = ., FUN = function(x) { sum(is.na(x)) })
 identical(missing_dates_1, missing_dates_2)
+# blah <- df %>%
+#   select(ends_with("date")) %>% 
+#   mutate_all(mdy)
 df <- df %>% 
-  mutate_at(vars(ends_with("date")), mdy)
+  mutate_at(vars(ends_with("date")), function(x) { as.character(mdy(x)) })
 # Histo plot of columns with dates
-ggplot(df, aes(x = dob)) + geom_histogram()
+# ggplot(df, aes(x = dob)) + geom_histogram() # dob field has to be class Date (not character)
 df_dates <- df %>% 
   select(subject_id, redcap_event_name, dob, ends_with("date"))
-lapply(X = df_dates[, -(1:2)], FUN = function(x) { # is column
-    ggplot(df, aes(x = x)) + geom_histogram(bins = 20) + ggtitle(label = names(x))
-  })
+# lapply(X = df_dates[, -(1:2)], FUN = function(x) { # date fields have to be class Date (not character)
+#     ggplot(df, aes(x = x)) + geom_histogram(bins = 20) + ggtitle(label = names(x))
+#   })
 # Range of columns with dates
 lapply(X = df_dates[, -(1:2)], FUN = function(x) { range(x, na.rm = TRUE) })
 df_dates_future <- df_dates %>% 
@@ -65,7 +69,7 @@ df$redcap_event_name <- stringr::str_replace(string = df$redcap_event_name, patt
 # Reshape to long
 df_long <- df %>% 
   dplyr::select(subject_id, mrn, madc_id, dob, redcap_event_name, everything()) %>% 
-  tidyr::gather(key = "var", value = "val", -subject_id, -redcap_event_name, -mrn, -madc_id, -dob) 
+  tidyr::gather(key = "var", value = "val", -subject_id, -redcap_event_name) 
 
 # Reshape to wide
 df_wide <- df_long %>% 
